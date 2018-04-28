@@ -55,6 +55,37 @@ class PipelineTests: XCTestCase {
         
         wait(for: [exp], timeout: 10)
     }
+    
+    func testOperations() {
+        let exp = XCTestExpectation(description: "Test pipeline")
+
+        let a = PipeOperation(CreateURLRequest())
+        let b = PipeOperation(FetchData())
+        let joint1 = JointOperation(joining: a, with: b)
+        let c = PipeOperation(ProcessMessages())
+        let joint2 = JointOperation(joining: b, with: c)
+        let d = PipeOperation(ConcatenateMessages())
+        let joint3 = JointOperation(joining: c, with: d)
+        
+        d.completionBlock = {
+            guard let output = d.output else { XCTFail() ; return }
+            switch output {
+            case let .success(message):
+                print("\(message)")
+            case let .failure(error):
+                XCTFail("\(error)")
+            }
+            
+            exp.fulfill()
+        }
+        
+        a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
+        
+        let queue = OperationQueue()
+        queue.addOperations([a, b, c, d, joint1, joint2, joint3], waitUntilFinished: false)
+        
+        wait(for: [exp], timeout: 5)
+    }
 }
 
 
