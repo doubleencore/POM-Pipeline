@@ -18,6 +18,8 @@ class PipeOperation<I, O>: AsynchronousOperation {
         self.pipe = AnyPipe(pipe)
     }
     
+    // Should I be Result<I> to pass previous result in?
+    // Result could have an additional state of .initial(T).
     var input: I?
     var output: Result<O>?
     
@@ -30,53 +32,31 @@ class PipeOperation<I, O>: AsynchronousOperation {
         }
     }
     
-    
-}
-
-class JointOperation<I, M, O>: AsynchronousOperation {
-    enum JointOperationError: Error {
-        case noOutputFromLeftOperation
-    }
-    
-    typealias PipeA = PipeOperation<I, M>
-    typealias PipeB = PipeOperation<M, O>
-    
-    var a: PipeA
-    var b: PipeB
-    var output: Result<M>? // Type is M because we'll really only be reporting errors from the first op here.
-    
-    init(joining a: PipeA, with b: PipeB) {
-        self.a = a
-        self.b = b
+    private var joint: (() -> ())?
+    @discardableResult func join<O2>(_ other: PipeOperation<O, O2>) -> PipeOperation<O, O2> {
+        other.addDependency(self)
         
-        super.init()
-        
-        self.addDependency(a)
-        b.addDependency(self)
-    }
-    
-    override func execute() {
-        guard let output = a.output else { fatalError("This should be a Result.failure(error) instead") }
-        
-        switch output {
-        case let .success(nextInput):
-            b.input = nextInput
-        case .failure(_):
-            self.output = output
+        self.joint = { [weak self, weak other] in
+            guard let weakSelf = self,
+                let weakOther = other,
+                let output = weakSelf.output else { return }
+            
+            if case let .success(nextInput) = output {
+                weakOther.input = nextInput
+            }
+            
+            // TODO: Failure of this operation (no output) will result in the next operation failing due to .noInput.
+            // Maybe that's ok? Only if we aggregate errors instead of just reporting one.
+            // Can't bubble up the originating error because of type mismatch, but aggregation should be fine.
         }
         
-        self.finish()
+        return other
     }
     
-    // TODO: All the operation state stuff to make it actually work correctly.
+    public final override func willFinish() {
+        self.joint?()
+    }
 }
-
-// What I want to do but can't...
-//extension OperationQueue {
-//    func addPipeOperations(_ ops: PipeOperation...) {
-//
-//    }
-//}
 
 
 
@@ -162,9 +142,14 @@ open class AsynchronousOperation: Operation {
         fatalError("Subclasses must implement `execute`.")
     }
     
+    // Provide an opportunity to clean anything up immediately before finish()
+    open func willFinish() {
+    }
+    
     /// Call this function after any work is done or after a call to `cancel()`
     /// to move the operation into a completed state.
     public final func finish() {
+        willFinish()
         state = .finished
     }
 }

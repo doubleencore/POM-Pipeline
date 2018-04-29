@@ -61,11 +61,10 @@ class PipelineTests: XCTestCase {
 
         let a = PipeOperation(CreateURLRequest())
         let b = PipeOperation(FetchData())
-        let joint1 = JointOperation(joining: a, with: b)
         let c = PipeOperation(ProcessMessages())
-        let joint2 = JointOperation(joining: b, with: c)
         let d = PipeOperation(ConcatenateMessages())
-        let joint3 = JointOperation(joining: c, with: d)
+        
+        a.join(b).join(c).join(d)
         
         d.completionBlock = {
             guard let output = d.output else { XCTFail() ; return }
@@ -82,7 +81,7 @@ class PipelineTests: XCTestCase {
         a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
         
         let queue = OperationQueue()
-        queue.addOperations([a, b, c, d, joint1, joint2, joint3], waitUntilFinished: false)
+        queue.addOperations([a, b, c, d], waitUntilFinished: false)
         
         wait(for: [exp], timeout: 5)
     }
