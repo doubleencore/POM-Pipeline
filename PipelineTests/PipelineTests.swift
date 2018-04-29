@@ -64,8 +64,6 @@ class PipelineTests: XCTestCase {
         let c = PipeOperation(ProcessMessages())
         let d = PipeOperation(ConcatenateMessages())
         
-        a.join(b).join(c).join(d)
-        
         d.completionBlock = {
             guard let output = d.output else { XCTFail() ; return }
             switch output {
@@ -81,7 +79,7 @@ class PipelineTests: XCTestCase {
         a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
         
         let queue = OperationQueue()
-        queue.addOperations([a, b, c, d], waitUntilFinished: false)
+        queue.addOperations(all(a => b => c => d), waitUntilFinished: false)
         
         wait(for: [exp], timeout: 5)
     }
