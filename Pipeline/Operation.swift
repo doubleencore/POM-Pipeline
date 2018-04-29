@@ -33,7 +33,19 @@ class PipeOperation<I, O>: AsynchronousOperation {
     }
     
     private var joint: (() -> ())?
-    @discardableResult func join<O2>(_ other: PipeOperation<O, O2>) -> PipeOperation<O, O2> {
+    @discardableResult func join<O2>(_ ops: (PipeOperation<O, O2>, [Operation])) -> (PipeOperation<O, O2>, [Operation]) {
+        var (other, chain) = ops
+        let next = _join(other)
+        chain.append(other)
+        return (next, chain)
+    }
+    
+    @discardableResult func join<O2>(_ other: PipeOperation<O, O2>) -> (PipeOperation<O, O2>, [Operation]) {
+        let next = _join(other)
+        return (next, [self, next])
+    }
+    
+    private func _join<O2>(_ other: PipeOperation<O, O2>) -> PipeOperation<O, O2> {
         other.addDependency(self)
         
         self.joint = { [weak self, weak other] in
@@ -59,30 +71,19 @@ class PipeOperation<I, O>: AsynchronousOperation {
 }
 
 infix operator =>: AdditionPrecedence
-@discardableResult func =><I, M, O>(lhs: PipeOperation<I, M>, rhs: PipeOperation<M, O>) -> PipeOperation<M, O> {
+
+@discardableResult func =><I, M, O>(lhs: PipeOperation<I, M>, rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
     return lhs.join(rhs)
 }
 
-// This is a bad idea but makes for a great API when used with the operator.
-// all(a => b => c)
-// all() gets passed the last op in the chain and uses the dependency chain
-// to create an array of operations. Use this to easily gather them to add to a queue.
-// Still a bad idea though...
-extension Operation {
-    func flattenDependencies() -> [Operation] {
-        var deps: [Operation] = self.dependencies
-        dependencies.forEach {
-            deps.append(contentsOf: $0.flattenDependencies())
-        }
-        return deps
-    }
+@discardableResult func =><I, M, O>(lhs: (PipeOperation<I, M>, [Operation]), rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
+    let (other, ops) = lhs
+    return other.join((rhs, ops))
 }
 
-func all(_ op: Operation) -> [Operation] {
-    return [op] + op.flattenDependencies()
+func gather<I, O>(_ ops: (PipeOperation<I, O>, [Operation])) -> [Operation] {
+    return ops.1
 }
-
-
 
 
 

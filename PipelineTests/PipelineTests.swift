@@ -78,8 +78,10 @@ class PipelineTests: XCTestCase {
         
         a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
         
+        let all = gather(a => b => c => d)
+        
         let queue = OperationQueue()
-        queue.addOperations(all(a => b => c => d), waitUntilFinished: false)
+        queue.addOperations(all, waitUntilFinished: false)
         
         wait(for: [exp], timeout: 5)
     }
