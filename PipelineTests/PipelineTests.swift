@@ -63,12 +63,17 @@ class PipelineTests: XCTestCase {
         let b = PipeOperation(FetchData())
         let c = PipeOperation(ProcessMessages())
         let d = PipeOperation(ConcatenateMessages())
+        let e = PipeOperation(BlockPipe { (input, completion) in
+            completion(Result.success(input + "!"))
+        })
         
-        d.completionBlock = {
-            guard let output = d.output else { XCTFail() ; return }
+        let (final, all) = (a => b => c => d => e)
+
+        final.completionBlock = {
+            guard let output = final.output else { XCTFail() ; return }
             switch output {
             case let .success(message):
-                print("\(message)")
+                XCTAssertEqual(message, "Hello World!!")
             case let .failure(error):
                 XCTFail("\(error)")
             }
@@ -78,7 +83,6 @@ class PipelineTests: XCTestCase {
         
         a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
         
-        let all = gather(a => b => c => d)
         
         let queue = OperationQueue()
         queue.addOperations(all, waitUntilFinished: false)
