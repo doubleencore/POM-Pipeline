@@ -65,7 +65,7 @@ class PipeOperation<I, O>: AsynchronousOperation {
         return other
     }
     
-    public final override func willFinish() {
+    public final override func cleanUp() {
         self.joint?()
     }
 }
@@ -166,14 +166,14 @@ open class AsynchronousOperation: Operation {
         fatalError("Subclasses must implement `execute`.")
     }
     
-    // Provide an opportunity to clean anything up immediately before finish()
-    open func willFinish() {
+    /// Provides an opportunity to clean anything up immediately before finish()
+    open func cleanUp() {
     }
     
     /// Call this function after any work is done or after a call to `cancel()`
     /// to move the operation into a completed state.
     public final func finish() {
-        willFinish()
+        cleanUp()
         state = .finished
     }
 }
