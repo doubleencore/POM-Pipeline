@@ -30,14 +30,14 @@ private final class _AnyPipeBox<Concrete: Pipe>: _AnyPipeBase<Concrete.Input, Co
     }
 }
 
-final class AnyPipe<Input, Output>: Pipe {
+public final class AnyPipe<Input, Output>: Pipe {
     private let box: _AnyPipeBase<Input, Output>
     
     init<Concrete: Pipe>(_ concrete: Concrete) where Concrete.Input == Input, Concrete.Output == Output {
         box = _AnyPipeBox(concrete)
     }
     
-    func begin(with input: Input, completion: @escaping PipeCompletion) {
+    public func begin(with input: Input, completion: @escaping PipeCompletion) {
         box.begin(with: input, completion: completion)
     }
 }
@@ -46,7 +46,7 @@ final class AnyPipe<Input, Output>: Pipe {
 //  Joint creates a new pipe from two pipes, whose input matches the first, and
 //  output matches the second.
 
-final class Joint<Input, Mutual, Output>: Pipe {
+public final class Joint<Input, Mutual, Output>: Pipe {
     private let first: _AnyPipeBase<Input, Mutual>
     private let second: _AnyPipeBase<Mutual, Output>
     
@@ -55,7 +55,7 @@ final class Joint<Input, Mutual, Output>: Pipe {
         self.second = _AnyPipeBox(second)
     }
     
-    func begin(with input: Input, completion: @escaping PipeCompletion) {
+    public func begin(with input: Input, completion: @escaping PipeCompletion) {
         first.begin(with: input) { (result) in
             switch result {
             case let .success(output): self.second.begin(with: output, completion: completion)
@@ -65,10 +65,10 @@ final class Joint<Input, Mutual, Output>: Pipe {
     }
 }
 
-func join<F: Pipe, S: Pipe>(_ first: F, with second: S) -> Joint<F.Input, F.Output, S.Output> where F.Output == S.Input {
+public func join<F: Pipe, S: Pipe>(_ first: F, with second: S) -> Joint<F.Input, F.Output, S.Output> where F.Output == S.Input {
     return Joint(first: first, second: second)
 }
 
-func +<F: Pipe, S: Pipe>(lhs: F, rhs: S) -> Joint<F.Input, F.Output, S.Output> where F.Output == S.Input {
+public func +<F: Pipe, S: Pipe>(lhs: F, rhs: S) -> Joint<F.Input, F.Output, S.Output> where F.Output == S.Input {
     return join(lhs, with: rhs)
 }

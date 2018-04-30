@@ -8,22 +8,22 @@
 
 import Foundation
 
-class PipeOperation<I, O>: AsynchronousOperation {
-    enum PipeOperationError: Error {
+public class PipeOperation<I, O>: AsynchronousOperation {
+    public enum PipeOperationError: Error {
         case noInput
     }
     
     var pipe: AnyPipe<I, O>
-    init<P: Pipe>(_ pipe: P) where P.Input == I, P.Output == O {
+    public init<P: Pipe>(_ pipe: P) where P.Input == I, P.Output == O {
         self.pipe = AnyPipe(pipe)
     }
     
     // Should I be Result<I> to pass previous result in?
     // Result could have an additional state of .initial(T).
-    var input: I?
-    var output: Result<O>?
+    public var input: I?
+    public var output: Result<O>?
     
-    override func execute() {
+    public override func execute() {
         guard let input = input else { output = .failure(PipeOperationError.noInput) ; return }
         
         pipe.begin(with: input) { (output) in
@@ -33,14 +33,14 @@ class PipeOperation<I, O>: AsynchronousOperation {
     }
     
     private var joint: (() -> ())?
-    @discardableResult func join<O2>(_ ops: (PipeOperation<O, O2>, [Operation])) -> (PipeOperation<O, O2>, [Operation]) {
+    @discardableResult public func join<O2>(_ ops: (PipeOperation<O, O2>, [Operation])) -> (PipeOperation<O, O2>, [Operation]) {
         var (other, chain) = ops
         let next = _join(other)
         chain.append(other)
         return (next, chain)
     }
     
-    @discardableResult func join<O2>(_ other: PipeOperation<O, O2>) -> (PipeOperation<O, O2>, [Operation]) {
+    @discardableResult public func join<O2>(_ other: PipeOperation<O, O2>) -> (PipeOperation<O, O2>, [Operation]) {
         let next = _join(other)
         return (next, [self, next])
     }
@@ -72,18 +72,30 @@ class PipeOperation<I, O>: AsynchronousOperation {
 
 infix operator =>: AdditionPrecedence
 
-@discardableResult func =><I, M, O>(lhs: PipeOperation<I, M>, rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
+@discardableResult public func =><I, M, O>(lhs: PipeOperation<I, M>, rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
     return lhs.join(rhs)
 }
 
-@discardableResult func =><I, M, O>(lhs: (PipeOperation<I, M>, [Operation]), rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
+@discardableResult public func =><I, M, O>(lhs: (PipeOperation<I, M>, [Operation]), rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
     let (other, ops) = lhs
     return other.join((rhs, ops))
 }
 
-func gather<I, O>(_ ops: (PipeOperation<I, O>, [Operation])) -> [Operation] {
+public func gather<I, O>(_ ops: (PipeOperation<I, O>, [Operation])) -> [Operation] {
     return ops.1
 }
+
+//struct ChainLink<I, O> {
+//    let head: PipeOperation<I, O>
+//    let tail: [Operation]
+//    
+//    func join<O2>(_ next: PipeOperation<O, O2>) -> ChainLink<O, O2> {
+//        
+//        var newTail = tail
+//        newTail.append(next)
+//        return ChainLink<O, O2>(head: next, tail: newTail)
+//    }
+//}
 
 
 
