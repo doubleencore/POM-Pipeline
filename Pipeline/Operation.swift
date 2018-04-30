@@ -33,19 +33,7 @@ public class PipeOperation<I, O>: AsynchronousOperation {
     }
     
     private var joint: (() -> ())?
-    @discardableResult public func join<O2>(_ ops: (PipeOperation<O, O2>, [Operation])) -> (PipeOperation<O, O2>, [Operation]) {
-        var (other, chain) = ops
-        let next = _join(other)
-        chain.append(other)
-        return (next, chain)
-    }
-    
-    @discardableResult public func join<O2>(_ other: PipeOperation<O, O2>) -> (PipeOperation<O, O2>, [Operation]) {
-        let next = _join(other)
-        return (next, [self, next])
-    }
-    
-    private func _join<O2>(_ other: PipeOperation<O, O2>) -> PipeOperation<O, O2> {
+    @discardableResult fileprivate func _join<O2>(_ other: PipeOperation<O, O2>) -> PipeOperation<O, O2> {
         other.addDependency(self)
         
         self.joint = { [weak self, weak other] in
@@ -70,32 +58,29 @@ public class PipeOperation<I, O>: AsynchronousOperation {
     }
 }
 
-infix operator =>: AdditionPrecedence
-
-@discardableResult public func =><I, M, O>(lhs: PipeOperation<I, M>, rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
-    return lhs.join(rhs)
+protocol Joining {
+    associatedtype O
+    func into<O2>(_ next: PipeOperation<O, O2>) -> Pipeline<O, O2>
 }
 
-@discardableResult public func =><I, M, O>(lhs: (PipeOperation<I, M>, [Operation]), rhs: PipeOperation<M, O>) -> (PipeOperation<M, O>, [Operation]) {
-    let (other, ops) = lhs
-    return other.join((rhs, ops))
+extension PipeOperation: Joining {
+    @discardableResult func into<O2>(_ next: PipeOperation<O, O2>) -> Pipeline<O, O2> {
+        self._join(next)
+        return Pipeline(head: next, tail: [self, next])
+    }
 }
 
-public func gather<I, O>(_ ops: (PipeOperation<I, O>, [Operation])) -> [Operation] {
-    return ops.1
-}
+struct Pipeline<I, O>: Joining {
+    let head: PipeOperation<I, O>
+    let tail: [Operation]
 
-//struct ChainLink<I, O> {
-//    let head: PipeOperation<I, O>
-//    let tail: [Operation]
-//    
-//    func join<O2>(_ next: PipeOperation<O, O2>) -> ChainLink<O, O2> {
-//        
-//        var newTail = tail
-//        newTail.append(next)
-//        return ChainLink<O, O2>(head: next, tail: newTail)
-//    }
-//}
+    func into<O2>(_ next: PipeOperation<O, O2>) -> Pipeline<O, O2> {
+        head.into(next)
+        var newTail = tail
+        newTail.append(next)
+        return Pipeline<O, O2>(head: next, tail: newTail)
+    }
+}
 
 
 

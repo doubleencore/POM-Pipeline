@@ -67,10 +67,10 @@ class PipelineTests: XCTestCase {
             completion(Result.success(input + "!"))
         })
         
-        let (final, all) = (a => b => c => d => e)
+        let pipeline = a.into(b).into(c).into(d).into(e)
 
-        final.completionBlock = {
-            guard let output = final.output else { XCTFail() ; return }
+        pipeline.head.completionBlock = {
+            guard let output = pipeline.head.output else { XCTFail() ; return }
             switch output {
             case let .success(message):
                 XCTAssertEqual(message, "Hello World!!")
@@ -85,7 +85,7 @@ class PipelineTests: XCTestCase {
         
         
         let queue = OperationQueue()
-        queue.addOperations(all, waitUntilFinished: false)
+        queue.addOperations(pipeline.tail, waitUntilFinished: false)
         
         wait(for: [exp], timeout: 5)
     }
