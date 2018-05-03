@@ -20,41 +20,115 @@ class PipelineTests: XCTestCase {
     }
     
     func testSuccess() {
-        let exp = XCTestExpectation(description: "Test pipeline")
-
-        let pipe = AnyPipe(CreateURLRequest()) + AnyPipe(FetchData()) + AnyPipe(ProcessMessages()) + AnyPipe(ConcatenateMessages())
-        pipe.begin(with: "http://data-live.s3.amazonaws.com/pipeline-test.json") { (result) in
-            switch result {
-            case let .success(message):
-                print("\(message)")
-            case let .failure(error):
-                XCTFail(error.localizedDescription)
-            }
-            
-            exp.fulfill()
-        }
-        
-        wait(for: [exp], timeout: 10)
     }
     
     func testURLFailure() {
+    }
+    
+    func testOperations() {
         let exp = XCTestExpectation(description: "Test pipeline")
+
+        let a = PipeOperation(CreateURLRequest())
+        let b = PipeOperation(FetchData())
+        let c = PipeOperation(ProcessMessages())
+        let d = PipeOperation(ConcatenateMessages())
+        let e = PipeOperation(BlockPipe { (input, completion) in
+            completion(Result.success(input + "!"))
+        })
         
-        let pipe = AnyPipe(CreateURLRequest()) + AnyPipe(FetchData()) + AnyPipe(ProcessMessages()) + AnyPipe(ConcatenateMessages())
-        pipe.begin(with: "Jimmy") { (result) in
-            switch result {
-            case .success(_):
-                XCTFail("This should have failed")
-            case .failure(_):
-                break // success
-                // TODO: Assert correct error type.
+        let pipeline = a.into(b).into(c).into(d).into(e)
+
+        pipeline.head.completionBlock = {
+            guard let output = pipeline.head.output else { XCTFail() ; return }
+            switch output {
+            case let .success(message):
+                XCTAssertEqual(message, "Hello World!!")
+            case let .failure(error):
+                XCTFail("\(error)")
             }
             
             exp.fulfill()
         }
         
-        wait(for: [exp], timeout: 10)
+        a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
+        
+        
+        let queue = OperationQueue()
+        queue.addOperations(pipeline.tail, waitUntilFinished: false)
+        
+        wait(for: [exp], timeout: 5)
+    }
+    
+    func testCancellationBeforeStart() {
+        let exp = XCTestExpectation(description: "Test pipeline")
+        
+        let a = PipeOperation(CreateURLRequest())
+        let b = PipeOperation(FetchData())
+        let c = PipeOperation(ProcessMessages())
+        
+        let pipeline = a.into(b).into(c)
+        
+        pipeline.head.completionBlock = {
+            guard let output = pipeline.head.output else { XCTFail() ; return }
+            switch output {
+            case .success(_):
+                XCTFail()
+            case let .failure(error):
+                if case PipeOperationError.cancelled = error {
+                    // Success
+                }
+                else {
+                    XCTFail()
+                }
+            }
+            
+            exp.fulfill()
+        }
+        
+        a.input = "http://data-live.s3.amazonaws.com/pipeline-test.json"
+        
+        let queue = OperationQueue()
+        queue.addOperations(pipeline.tail, waitUntilFinished: false)
+
+        b.cancel()
+
+        wait(for: [exp], timeout: 5)
+    }
+    
+    func testErrorPropagation() {
+        let exp = XCTestExpectation(description: "Test pipeline")
+        
+        let a = PipeOperation(AppendsFoo())
+        let b = PipeOperation(AppendsFoo())
+        let c = PipeOperation(FailsEveryTime())
+        let d = PipeOperation(AppendsFoo())
+        let e = PipeOperation(AppendsFoo())
+        
+        let pipeline = a.into(b).into(c).into(d).into(e)
+        
+        pipeline.head.completionBlock = {
+            guard let output = pipeline.head.output else { XCTFail() ; return }
+            switch output {
+            case .success(_):
+                XCTFail()
+            case let .failure(error):
+                if case FailsEveryTime.FailsEveryTimeError.allDayEveryDay = error {
+                    // Success
+                }
+                else {
+                    XCTFail()
+                }
+            }
+            
+            exp.fulfill()
+        }
+        
+        a.input = ""
+        
+        let queue = OperationQueue()
+        queue.addOperations(pipeline.tail, waitUntilFinished: false)
+        
+        wait(for: [exp], timeout: 5)
+
     }
 }
-
-

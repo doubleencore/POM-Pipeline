@@ -13,6 +13,7 @@
 		75A79AC3209399CA0020EE8B /* Pipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A79AC2209399CA0020EE8B /* Pipe.swift */; };
 		75A79AC5209399FE0020EE8B /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A79AC4209399FE0020EE8B /* Box.swift */; };
 		75A79AC920939DE60020EE8B /* Sample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A79AC820939DE60020EE8B /* Sample.swift */; };
+		75A79ACD2094CB200020EE8B /* Operation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A79ACC2094CB200020EE8B /* Operation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +36,7 @@
 		75A79AC2209399CA0020EE8B /* Pipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pipe.swift; sourceTree = "<group>"; };
 		75A79AC4209399FE0020EE8B /* Box.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Box.swift; sourceTree = "<group>"; };
 		75A79AC820939DE60020EE8B /* Sample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sample.swift; sourceTree = "<group>"; };
+		75A79ACC2094CB200020EE8B /* Operation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Operation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +83,7 @@
 				75A79AAC2093996F0020EE8B /* Info.plist */,
 				75A79AC2209399CA0020EE8B /* Pipe.swift */,
 				75A79AC4209399FE0020EE8B /* Box.swift */,
+				75A79ACC2094CB200020EE8B /* Operation.swift */,
 			);
 			path = Pipeline;
 			sourceTree = "<group>";
@@ -206,6 +209,7 @@
 			files = (
 				75A79AC3209399CA0020EE8B /* Pipe.swift in Sources */,
 				75A79AC5209399FE0020EE8B /* Box.swift in Sources */,
+				75A79ACD2094CB200020EE8B /* Operation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -361,6 +365,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = Pipeline/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -387,6 +392,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = Pipeline/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
