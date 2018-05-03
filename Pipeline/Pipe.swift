@@ -10,9 +10,11 @@ public enum Result<T> {
     case failure(Error)
 }
 
+public typealias CancelSignal = (() -> Void)
+
 //  MARK: - Pipe
 //  Pipe defines the protocol of an object that takes an input and produces
-//  (asynchronously) an output.
+//  (asynchronously) a single output.
 
 public protocol Pipe {
     associatedtype Input
@@ -20,7 +22,7 @@ public protocol Pipe {
     
     typealias PipeCompletion = ((Result<Output>) -> Void)
 
-    func begin(with input: Input, completion: @escaping PipeCompletion)
+    @discardableResult func begin(with input: Input, completion: @escaping PipeCompletion) -> CancelSignal?
 }
 
 //  MARK: - Block Pipe
@@ -35,8 +37,9 @@ public final class BlockPipe<I, O>: Pipe {
     init(_ block: @escaping Block) {
         self.block = block
     }
-    
-    public func begin(with input: I, completion: @escaping PipeCompletion) {
+
+    @discardableResult public func begin(with input: I, completion: @escaping PipeCompletion) -> CancelSignal? {
         block(input, completion)
+        return nil
     }
 }

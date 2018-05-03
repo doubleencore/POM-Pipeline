@@ -8,28 +8,48 @@
 
 import Foundation
 
+public enum PipeOperationError: Error {
+    case cancelled
+    case noInput
+    case brokenPipe
+}
+
 public class PipeOperation<I, O>: AsynchronousOperation {
-    public enum PipeOperationError: Error {
-        case noInput
-    }
     
     var pipe: AnyPipe<I, O>
     public init<P: Pipe>(_ pipe: P) where P.Input == I, P.Output == O {
         self.pipe = AnyPipe(pipe)
+        super.init()
+        self.name = "PipeOperation(\(P.self)(\(I.self)->\(O.self)))"
     }
     
-    // Should I be Result<I> to pass previous result in?
-    // Result could have an additional state of .initial(T).
     public var input: I?
     public var output: Result<O>?
+    private var cancelSignal: CancelSignal?
     
     public override func execute() {
-        guard let input = input else { output = .failure(PipeOperationError.noInput) ; return }
-        
-        pipe.begin(with: input) { (output) in
+        guard let input = input else {
+            output = .failure(PipeOperationError.noInput)
+            self.finish()
+            return
+        }
+
+        self.cancelSignal = pipe.begin(with: input) { (output) in
             self.output = output
             self.finish()
         }
+    }
+    
+    
+    public override func cancel() {
+        cancel(with: PipeOperationError.cancelled)
+    }
+    
+    public final func cancel(with error: Error) {
+        output = .failure(error)
+        self.cancelSignal?()
+        super.cancel()
+        self.finish()
     }
     
     private var joint: (() -> ())?
@@ -41,13 +61,15 @@ public class PipeOperation<I, O>: AsynchronousOperation {
                 let weakOther = other,
                 let output = weakSelf.output else { return }
             
-            if case let .success(nextInput) = output {
+            switch output {
+            case let .success(nextInput):
                 weakOther.input = nextInput
+            case let .failure(error):
+                // Cancel next operation.
+                // Pass the error forward.
+                // This cascades to the end of the pipe.
+                weakOther.cancel(with: error)
             }
-            
-            // TODO: Failure of this operation (no output) will result in the next operation failing due to .noInput.
-            // Maybe that's ok? Only if we aggregate errors instead of just reporting one.
-            // Can't bubble up the originating error because of type mismatch, but aggregation should be fine.
         }
         
         return other
